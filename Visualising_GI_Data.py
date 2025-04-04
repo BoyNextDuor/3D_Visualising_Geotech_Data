@@ -86,33 +86,57 @@ if uploaded_file:
 
         # Define colors for different geological units with Streamlit color picker
         unique_units = sorted(df_strata_merged["Geology_Unit_1"].unique())  # Sort the units
-        # Define colors for different geological units with Streamlit color picker
         
-        colors = {}
-        st.sidebar.header("Choose Colors for Geology Units")
-        for unit in unique_units:
-            colors[unit] = st.sidebar.color_picker(f"Color for {unit}", "#%06x" % (hash(unit) % 0xFFFFFF))
+        # Define colors for different geological units with Streamlit color picker
+        # Sidebar: Collapsible Color Selection
+        with st.sidebar.expander("Choose Colors for Geology Units", expanded=False):
+            # Define colors for different geological units with Streamlit color picker
+            colors = {}
+            for unit in unique_units:
+                colors[unit] = st.color_picker(f"Color for {unit}", "#%06x" % (hash(unit) % 0xFFFFFF))
 
-        # Create traces for each borehole
+        
+
+        # Sidebar: Collapsible Borehole Selection
+        with st.sidebar.expander("Test Locations", expanded=True):
+            # "Select All" checkbox
+            select_all = st.checkbox("Select All Boreholes", value=True)
+        
+            # Get list of available boreholes
+            available_boreholes = sorted(df_strata_merged["PointID"].unique())
+        
+            # Create checkboxes for individual boreholes
+            borehole_visibility = {
+                borehole: st.checkbox(f"{borehole}", value=select_all)
+                for borehole in available_boreholes
+            }
+        
+        # Filter boreholes based on selection
+        selected_boreholes = [bh for bh, visible in borehole_visibility.items() if visible]
+        df_strata_filtered = df_strata_merged[df_strata_merged["PointID"].isin(selected_boreholes)]
+        
+        # Create traces for selected boreholes
         traces = []
-        added_to_legend = set()  # Track units already added to the legend
-        for _, row in df_strata_merged.iterrows():
+        added_to_legend = set()
+        for _, row in df_strata_filtered.iterrows():
             x, y = row["East"], row["North"]
             z = [row["Top_Elev"], row["Bottom_Elev"]]
             unit = row["Geology_Unit_1"]
             color = colors[unit]
-            
-            show_legend = unit not in added_to_legend  # Show legend only if unit is not already added
+        
+            show_legend = unit not in added_to_legend
             if show_legend:
                 added_to_legend.add(unit)
-            
-            trace = go.Scatter3d(x=[x, x], y=[y, y], z=z, mode='lines',
-                                 text=f"PointID: {row['PointID']}<br>Depth: {row['Depth']}<br>Bottom: {row['Bottom']}<br>Geology Unit: {unit}",
-                                 hoverinfo='text',
-                                 line=dict(color=color, width=5),
-                                 name=unit, showlegend=show_legend)
+        
+            trace = go.Scatter3d(
+                x=[x, x], y=[y, y], z=z, mode='lines',
+                text=f"PointID: {row['PointID']}<br>Depth: {row['Depth']}m<br>Bottom: {row['Bottom']}m<br>Geology Unit: {unit}",
+                hoverinfo='text',
+                line=dict(color=color, width=5),
+                name=unit, showlegend=show_legend
+            )
             traces.append(trace)
-
+        
         # Create interactive plot
         fig = go.Figure(data=traces)
         fig.update_layout(
@@ -121,16 +145,14 @@ if uploaded_file:
                 xaxis=dict(title="East", tickformat=".0f"),
                 yaxis=dict(title="North", tickformat=".0f"),
                 zaxis=dict(title="Elevation (m AHD)", tickformat=".0f"),
-                camera=dict(
-                    eye=dict(x=0, y=0, z=2),  # Set the camera position to look from the top
-                    up=dict(x=0, y=1, z=0)   # Set the up direction to the north
-                )
             ),
             margin=dict(l=0, r=0, b=0, t=40)
         )
-
+        
         # Display in Streamlit
         st.plotly_chart(fig)
+
+
 
     # Execute selected visualization
     if vis_option == "Moisture Content Heatmap":
