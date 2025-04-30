@@ -20,7 +20,7 @@ uploaded_file = st.file_uploader("Upload an Excel file", type=["xls", "xlsx", "x
 if uploaded_file is not None:
     st.session_state.uploaded_file = uploaded_file
     
-run_plot = st.button("Refresh Plot")
+run_plot = st.button("Run")
 
 if st.session_state.uploaded_file and run_plot:
     # Visualization options
@@ -78,6 +78,10 @@ if st.session_state.uploaded_file and run_plot:
     
         # Function to plot borehole stratigraphy
         def plot_borehole_stratigraphy(uploaded_file, df_points):
+            refresh_plot = st.button("Refresh Borehole Plot")
+            if not refresh_plot:
+                return
+
             strata_sheet = "GEOLOGY_UNIT_1"
             df_strata = pd.read_excel(uploaded_file, sheet_name=strata_sheet)
             df_strata = df_strata[["PointID", "Depth", "Bottom", "Geology_Unit"]]
@@ -94,14 +98,19 @@ if st.session_state.uploaded_file and run_plot:
     
             # Define colors for different geological units with Streamlit color picker
             unique_units = sorted(df_strata_merged["Geology_Unit"].unique())  # Sort the units
+
+            if "unit_colors" not in st.session_state:
+                st.session_state.unit_colors = {}
+
+
             
             # Define colors for different geological units with Streamlit color picker
             # Sidebar: Collapsible Color Selection
             with st.sidebar.expander("Choose Colors for Geology Units", expanded=False):
-                # Define colors for different geological units with Streamlit color picker
-                colors = {}
                 for unit in unique_units:
-                    colors[unit] = st.color_picker(f"Color for {unit}", "#%06x" % (hash(unit) % 0xFFFFFF))
+                    default_color = st.session_state.unit_colors.get(unit, "#%06x" % (hash(unit) % 0xFFFFFF))
+                    chosen_color = st.color_picker(f"Color for {unit}", value=default_color)
+                    st.session_state.unit_colors[unit] = chosen_color
     
             
     
@@ -130,7 +139,8 @@ if st.session_state.uploaded_file and run_plot:
                 x, y = row["East"], row["North"]
                 z = [row["Top_Elev"], row["Bottom_Elev"]]
                 unit = row["Geology_Unit"]
-                color = colors[unit]
+                color = st.session_state.unit_colors[unit]
+
             
                 show_legend = unit not in added_to_legend
                 if show_legend:
