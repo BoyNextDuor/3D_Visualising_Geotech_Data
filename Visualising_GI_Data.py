@@ -89,7 +89,7 @@ if st.session_state.uploaded_file and run_plot:
             if st.button("Refresh Borehole Plot"):
                 st.session_state.refresh_stratigraphy = True
 
-            if st.session_state.refresh_stratigraphy:
+            if run_plot and st.session_state.refresh_stratigraphy:
             
                 strata_sheet = "GEOLOGY_UNIT_1"
                 df_strata = pd.read_excel(uploaded_file, sheet_name=strata_sheet)
