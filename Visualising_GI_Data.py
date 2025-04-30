@@ -70,9 +70,9 @@ if uploaded_file:
 
     # Function to plot borehole stratigraphy
     def plot_borehole_stratigraphy(uploaded_file, df_points):
-        strata_sheet = "STRATA_MAIN"
+        strata_sheet = "GEOLOGY_UNIT_1"
         df_strata = pd.read_excel(uploaded_file, sheet_name=strata_sheet)
-        df_strata = df_strata[["PointID", "Depth", "Bottom", "Geology_Unit_1"]]
+        df_strata = df_strata[["PointID", "Depth", "Bottom", "Geology_Unit"]]
         
         # Merge strata data with point locations
         df_strata_merged = df_strata.merge(df_points, on="PointID")
@@ -82,10 +82,10 @@ if uploaded_file:
         df_strata_merged["Top_Elev"] = df_strata_merged["Elevation"] - df_strata_merged["Depth"]
 
         # Ensure Geology_Unit_1 is of string type
-        df_strata_merged["Geology_Unit_1"] = df_strata_merged["Geology_Unit_1"].astype(str)
+        df_strata_merged["Geology_Unit"] = df_strata_merged["Geology_Unit"].astype(str)
 
         # Define colors for different geological units with Streamlit color picker
-        unique_units = sorted(df_strata_merged["Geology_Unit_1"].unique())  # Sort the units
+        unique_units = sorted(df_strata_merged["Geology_Unit"].unique())  # Sort the units
         
         # Define colors for different geological units with Streamlit color picker
         # Sidebar: Collapsible Color Selection
@@ -121,7 +121,7 @@ if uploaded_file:
         for _, row in df_strata_filtered.iterrows():
             x, y = row["East"], row["North"]
             z = [row["Top_Elev"], row["Bottom_Elev"]]
-            unit = row["Geology_Unit_1"]
+            unit = row["Geology_Unit"]
             color = colors[unit]
         
             show_legend = unit not in added_to_legend
