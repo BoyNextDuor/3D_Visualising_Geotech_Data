@@ -83,10 +83,7 @@ if st.session_state.uploaded_file and st.session_state.refresh_stratigraphy:
     
         # Function to plot borehole stratigraphy
         def plot_borehole_stratigraphy(uploaded_file, df_points):
-            
-            if not run_plot:
-                return
-
+         
             strata_sheet = "GEOLOGY_UNIT_1"
             df_strata = pd.read_excel(uploaded_file, sheet_name=strata_sheet)
             df_strata = df_strata[["PointID", "Depth", "Bottom", "Geology_Unit"]]
