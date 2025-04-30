@@ -75,109 +75,117 @@ if uploaded_file:
 
     # Function to plot borehole stratigraphy
     def plot_borehole_stratigraphy(uploaded_file, df_points):
+
+        if "refresh_stratigraphy" not in st.session_state:
+            st.session_state.refresh_stratigraphy = False
+        
+        if st.button("Refresh Borehole Plot"):
+            st.session_state.refresh_stratigraphy = True
+
+        if st.session_state.refresh_stratigraphy:
                
-        strata_sheet = "GEOLOGY_UNIT_1"
-        df_strata = pd.read_excel(uploaded_file, sheet_name=strata_sheet)
-        df_strata = df_strata[["PointID", "Depth", "Bottom", "Geology_Unit"]]
-        
-        # Merge strata data with point locations
-        df_strata_merged = df_strata.merge(df_points, on="PointID")
-
-        # Adjust depths to elevation reference
-        df_strata_merged["Bottom_Elev"] = df_strata_merged["Elevation"] - df_strata_merged["Bottom"]
-        df_strata_merged["Top_Elev"] = df_strata_merged["Elevation"] - df_strata_merged["Depth"]
-
-        # Ensure Geology_Unit_1 is of string type
-        df_strata_merged["Geology_Unit"] = df_strata_merged["Geology_Unit"].astype(str)
-
-        # Define colors for different geological units with Streamlit color picker
-        unique_units = sorted(df_strata_merged["Geology_Unit"].unique())  # Sort the units
-
-        if "unit_colors" not in st.session_state:
-            st.session_state.unit_colors = {}
-
-
-        
-        # Define colors for different geological units with Streamlit color picker
-        # Sidebar: Collapsible Color Selection
-        with st.sidebar.expander("Choose Colors for Geology Units", expanded=False):
-            for unit in unique_units:
-                default_color = st.session_state.unit_colors.get(unit, "#%06x" % (hash(unit) % 0xFFFFFF))
-                chosen_color = st.color_picker(f"Color for {unit}", value=default_color)
-                st.session_state.unit_colors[unit] = chosen_color
-
-        
-
-        # Sidebar: Collapsible Borehole Selection
-        with st.sidebar.expander("Test Locations", expanded=True):
-            # "Select All" checkbox
-            select_all = st.checkbox("Select All Boreholes", value=True)
-        
-            # Get list of available boreholes
-            available_boreholes = sorted(df_strata_merged["PointID"].unique())
-        
-            # Create checkboxes for individual boreholes
-            borehole_visibility = {
-                borehole: st.checkbox(f"{borehole}", value=select_all)
-                for borehole in available_boreholes
-            }
-        
-        # Filter boreholes based on selection
-        selected_boreholes = [bh for bh, visible in borehole_visibility.items() if visible]
-        df_strata_filtered = df_strata_merged[df_strata_merged["PointID"].isin(selected_boreholes)]
-        
-        # Create traces for selected boreholes
-        traces = []
-        added_to_legend = set()
-        for _, row in df_strata_filtered.iterrows():
-            x, y = row["East"], row["North"]
-            z = [row["Top_Elev"], row["Bottom_Elev"]]
-            unit = row["Geology_Unit"]
-            color = st.session_state.unit_colors[unit]
-
-        
-            show_legend = unit not in added_to_legend
-            if show_legend:
-                added_to_legend.add(unit)
-        
-            trace = go.Scatter3d(
-                x=[x, x], y=[y, y], z=z, mode='lines',
-                text=f"PointID: {row['PointID']}<br>Depth: {row['Depth']}m<br>Bottom: {row['Bottom']}m<br>Geology Unit: {unit}",
-                hoverinfo='text',
-                line=dict(color=color, width=5),
-                name=unit, showlegend=show_legend
+            strata_sheet = "GEOLOGY_UNIT_1"
+            df_strata = pd.read_excel(uploaded_file, sheet_name=strata_sheet)
+            df_strata = df_strata[["PointID", "Depth", "Bottom", "Geology_Unit"]]
+            
+            # Merge strata data with point locations
+            df_strata_merged = df_strata.merge(df_points, on="PointID")
+    
+            # Adjust depths to elevation reference
+            df_strata_merged["Bottom_Elev"] = df_strata_merged["Elevation"] - df_strata_merged["Bottom"]
+            df_strata_merged["Top_Elev"] = df_strata_merged["Elevation"] - df_strata_merged["Depth"]
+    
+            # Ensure Geology_Unit_1 is of string type
+            df_strata_merged["Geology_Unit"] = df_strata_merged["Geology_Unit"].astype(str)
+    
+            # Define colors for different geological units with Streamlit color picker
+            unique_units = sorted(df_strata_merged["Geology_Unit"].unique())  # Sort the units
+    
+            if "unit_colors" not in st.session_state:
+                st.session_state.unit_colors = {}
+    
+    
+            
+            # Define colors for different geological units with Streamlit color picker
+            # Sidebar: Collapsible Color Selection
+            with st.sidebar.expander("Choose Colors for Geology Units", expanded=False):
+                for unit in unique_units:
+                    default_color = st.session_state.unit_colors.get(unit, "#%06x" % (hash(unit) % 0xFFFFFF))
+                    chosen_color = st.color_picker(f"Color for {unit}", value=default_color)
+                    st.session_state.unit_colors[unit] = chosen_color
+    
+            
+    
+            # Sidebar: Collapsible Borehole Selection
+            with st.sidebar.expander("Test Locations", expanded=True):
+                # "Select All" checkbox
+                select_all = st.checkbox("Select All Boreholes", value=True)
+            
+                # Get list of available boreholes
+                available_boreholes = sorted(df_strata_merged["PointID"].unique())
+            
+                # Create checkboxes for individual boreholes
+                borehole_visibility = {
+                    borehole: st.checkbox(f"{borehole}", value=select_all)
+                    for borehole in available_boreholes
+                }
+            
+            # Filter boreholes based on selection
+            selected_boreholes = [bh for bh, visible in borehole_visibility.items() if visible]
+            df_strata_filtered = df_strata_merged[df_strata_merged["PointID"].isin(selected_boreholes)]
+            
+            # Create traces for selected boreholes
+            traces = []
+            added_to_legend = set()
+            for _, row in df_strata_filtered.iterrows():
+                x, y = row["East"], row["North"]
+                z = [row["Top_Elev"], row["Bottom_Elev"]]
+                unit = row["Geology_Unit"]
+                color = st.session_state.unit_colors[unit]
+    
+            
+                show_legend = unit not in added_to_legend
+                if show_legend:
+                    added_to_legend.add(unit)
+            
+                trace = go.Scatter3d(
+                    x=[x, x], y=[y, y], z=z, mode='lines',
+                    text=f"PointID: {row['PointID']}<br>Depth: {row['Depth']}m<br>Bottom: {row['Bottom']}m<br>Geology Unit: {unit}",
+                    hoverinfo='text',
+                    line=dict(color=color, width=5),
+                    name=unit, showlegend=show_legend
+                )
+                traces.append(trace)
+            
+            # Create interactive plot
+            fig = go.Figure(data=traces)
+            fig.update_layout(
+                title="Interactive 3D Borehole Stratigraphy",
+                scene=dict(
+                    xaxis=dict(title="East", tickformat=".0f"),
+                    yaxis=dict(title="North", tickformat=".0f"),
+                    zaxis=dict(title="Elevation (m AHD)", tickformat=".0f"),
+                ),
+                margin=dict(l=0, r=0, b=0, t=40)
             )
-            traces.append(trace)
-        
-        # Create interactive plot
-        fig = go.Figure(data=traces)
-        fig.update_layout(
-            title="Interactive 3D Borehole Stratigraphy",
-            scene=dict(
-                xaxis=dict(title="East", tickformat=".0f"),
-                yaxis=dict(title="North", tickformat=".0f"),
-                zaxis=dict(title="Elevation (m AHD)", tickformat=".0f"),
-            ),
-            margin=dict(l=0, r=0, b=0, t=40)
-        )
-                # Add borehole labels above each stick
-        borehole_labels = df_strata_filtered.groupby("PointID").first().reset_index()
-
-        label_trace = go.Scatter3d(
-            x=borehole_labels["East"],
-            y=borehole_labels["North"],
-            z=borehole_labels["Elevation"] + 1,  # 1m above top of borehole
-            mode='text',
-            text=borehole_labels["PointID"],
-            textposition="top center",
-            textfont=dict(size=10, color="black"),
-            name="Borehole Labels",
-            showlegend=False
-        )
-        traces.append(label_trace)  # Add to the list of all traces
-
-        # Display in Streamlit
-        st.plotly_chart(fig)
+                    # Add borehole labels above each stick
+            borehole_labels = df_strata_filtered.groupby("PointID").first().reset_index()
+    
+            label_trace = go.Scatter3d(
+                x=borehole_labels["East"],
+                y=borehole_labels["North"],
+                z=borehole_labels["Elevation"] + 1,  # 1m above top of borehole
+                mode='text',
+                text=borehole_labels["PointID"],
+                textposition="top center",
+                textfont=dict(size=10, color="black"),
+                name="Borehole Labels",
+                showlegend=False
+            )
+            traces.append(label_trace)  # Add to the list of all traces
+    
+            # Display in Streamlit
+            st.plotly_chart(fig)
 
 
 
