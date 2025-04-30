@@ -78,8 +78,8 @@ if st.session_state.uploaded_file and run_plot:
     
         # Function to plot borehole stratigraphy
         def plot_borehole_stratigraphy(uploaded_file, df_points):
-            refresh_plot = st.button("Refresh Borehole Plot")
-            if not refresh_plot:
+            
+            if not run_plot:
                 return
 
             strata_sheet = "GEOLOGY_UNIT_1"
