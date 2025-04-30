@@ -135,14 +135,23 @@ if uploaded_file:
                 )
                 traces.append(trace)
 
-                # Add label on top
+                # ✅ Add label at top of each borehole only once
+            label_coords = df_filtered.groupby("PointID").agg({
+                "East": "first",
+                "North": "first",
+                "Top_Elev": "min"
+            }).reset_index()
+    
+            for _, row in label_coords.iterrows():
                 traces.append(go.Scatter3d(
-                    x=[x], y=[y], z=[row["Top_Elev"]],
+                    x=[row["East"]],
+                    y=[row["North"]],
+                    z=[row["Top_Elev"]],
                     mode='text',
                     text=[row["PointID"]],
-                    textposition='top center',
+                    textfont=dict(size=10),
                     showlegend=False
-                ))
+                ))    
 
             fig = go.Figure(data=traces)
             fig.update_layout(
