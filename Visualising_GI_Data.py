@@ -19,10 +19,15 @@ if "uploaded_file" not in st.session_state:
 uploaded_file = st.file_uploader("Upload an Excel file", type=["xls", "xlsx", "xlsm"])
 if uploaded_file is not None:
     st.session_state.uploaded_file = uploaded_file
-    
-run_plot = st.button("Run")
 
-if st.session_state.uploaded_file and run_plot:
+if "refresh_stratigraphy" not in st.session_state:
+    st.session_state.refresh_stratigraphy = False
+
+if st.button("Run"):
+    st.session_state.refresh_stratigraphy = True
+
+
+if st.session_state.uploaded_file and st.session_state.refresh_stratigraphy:
     # Visualization options
     vis_option = st.selectbox("Choose visualization type", [ "Borehole Stratigraphy", "Moisture Content Heatmap"])
     
