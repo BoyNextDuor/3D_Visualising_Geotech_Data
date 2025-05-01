@@ -67,7 +67,7 @@ def plot_elevation_vs_pli(file_path, geology_unit):
                 font=dict(family='Arial', size=20)
             ),
             xaxis=dict(
-                title="PLI (MPa)",
+                
                 showgrid=True,
                 gridcolor='lightgray',
                 gridwidth=1,
@@ -75,8 +75,13 @@ def plot_elevation_vs_pli(file_path, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                font=dict(family='Arial'),
-                #tickfont=dict(family='Arial')
+                title=dict(
+                    text = "PLI (MPa)",
+                    font = dict(
+                        family="Arial"
+                    )
+                ),
+                tickfont=dict(family='Arial')
             ),
             yaxis=dict(
                 title="Elevation (m AHD)",
@@ -88,8 +93,13 @@ def plot_elevation_vs_pli(file_path, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                font=dict(family='Arial'),
-                #tickfont=dict(family='Arial')
+                title=dict(
+                    text = "Elevation (m AHD)",
+                    font = dict(
+                        family="Arial"
+                    )
+                ),
+                tickfont=dict(family='Arial')
             ),
             font=dict(family='Arial'),  # General font setting (legend, annotations, etc.)
             height=600,
@@ -165,7 +175,6 @@ def plot_elevation_vs_ucs(file_path, geology_unit):
                 font=dict(family='Arial', size=20)
             ),
             xaxis=dict(
-                title="UCS (MPa)",
                 showgrid=True,
                 gridcolor='lightgray',
                 gridwidth=1,
@@ -173,11 +182,16 @@ def plot_elevation_vs_ucs(file_path, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                font=dict(family='Arial'),
-                #tickfont=dict(family='Arial')
+                title=dict(
+                    text = "UCS (MPa)",
+                    font = dict(
+                        family="Arial"
+                    )
+                ),
+                tickfont=dict(family='Arial')
             ),
             yaxis=dict(
-                title="Elevation (m AHD)",
+                
                 autorange=True,
                 showgrid=True,
                 gridcolor='lightgray',
@@ -186,8 +200,13 @@ def plot_elevation_vs_ucs(file_path, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                font=dict(family='Arial'),
-                #tickfont=dict(family='Arial')
+                title=dict(
+                    text = "Elevation (m AHD)",
+                    font = dict(
+                        family="Arial"
+                    )
+                ),
+                tickfont=dict(family='Arial')
             ),
             font=dict(family='Arial'),  # General font setting (legend, annotations, etc.)
             height=600,
@@ -258,8 +277,13 @@ def generate_pli_figure(df, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                font=dict(family='Arial'),
-                #tickfont=dict(family='Arial')
+                title=dict(
+                    text = "PLI (MPa)",
+                    font = dict(
+                        family="Arial"
+                    )
+                ),
+                tickfont=dict(family='Arial')
             ),
             yaxis=dict(
                 title="Elevation (m AHD)",
@@ -273,8 +297,13 @@ def generate_pli_figure(df, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                font=dict(family='Arial'),
-                #tickfont=dict(family='Arial')
+                title=dict(
+                    text = "Elevation (m AHD)",
+                    font = dict(
+                        family="Arial"
+                    )
+                ),
+                tickfont=dict(family='Arial')
             ),
             font=dict(family='Arial'),
             height=600,
@@ -337,8 +366,13 @@ def generate_ucs_figure(df, geology_unit):
             linewidth=1,
             linecolor='black',
             mirror=True,
-            font=dict(family='Arial'),
-            #tickfont=dict(family='Arial')
+            title=dict(
+                text = "UCS (MPa)",
+                font = dict(
+                    family="Arial"
+                )
+            ),
+            tickfont=dict(family='Arial')
         ),
         yaxis=dict(
             title="Elevation (m AHD)",
@@ -352,8 +386,13 @@ def generate_ucs_figure(df, geology_unit):
             linewidth=1,
             linecolor='black',
             mirror=True,
-            font=dict(family='Arial'),
-            #tickfont=dict(family='Arial')
+            title=dict(
+                text = "Elevation (m AHD)",
+                font = dict(
+                    family="Arial"
+                )
+            ),
+            tickfont=dict(family='Arial')
         ),
         font=dict(family='Arial'),
         height=600,
