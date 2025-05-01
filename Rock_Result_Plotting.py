@@ -75,7 +75,7 @@ def plot_elevation_vs_pli(file_path, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                titlefont=dict(family='Arial'),
+                font=dict(family='Arial'),
                 #tickfont=dict(family='Arial')
             ),
             yaxis=dict(
@@ -88,7 +88,7 @@ def plot_elevation_vs_pli(file_path, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                titlefont=dict(family='Arial'),
+                font=dict(family='Arial'),
                 #tickfont=dict(family='Arial')
             ),
             font=dict(family='Arial'),  # General font setting (legend, annotations, etc.)
@@ -173,7 +173,7 @@ def plot_elevation_vs_ucs(file_path, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                titlefont=dict(family='Arial'),
+                font=dict(family='Arial'),
                 #tickfont=dict(family='Arial')
             ),
             yaxis=dict(
@@ -186,7 +186,7 @@ def plot_elevation_vs_ucs(file_path, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                titlefont=dict(family='Arial'),
+                font=dict(family='Arial'),
                 #tickfont=dict(family='Arial')
             ),
             font=dict(family='Arial'),  # General font setting (legend, annotations, etc.)
@@ -258,7 +258,7 @@ def generate_pli_figure(df, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                titlefont=dict(family='Arial'),
+                font=dict(family='Arial'),
                 #tickfont=dict(family='Arial')
             ),
             yaxis=dict(
@@ -273,7 +273,7 @@ def generate_pli_figure(df, geology_unit):
                 linewidth=1,
                 linecolor='black',
                 mirror=True,
-                titlefont=dict(family='Arial'),
+                font=dict(family='Arial'),
                 #tickfont=dict(family='Arial')
             ),
             font=dict(family='Arial'),
@@ -337,7 +337,7 @@ def generate_ucs_figure(df, geology_unit):
             linewidth=1,
             linecolor='black',
             mirror=True,
-            titlefont=dict(family='Arial'),
+            font=dict(family='Arial'),
             #tickfont=dict(family='Arial')
         ),
         yaxis=dict(
@@ -352,7 +352,7 @@ def generate_ucs_figure(df, geology_unit):
             linewidth=1,
             linecolor='black',
             mirror=True,
-            titlefont=dict(family='Arial'),
+            font=dict(family='Arial'),
             #tickfont=dict(family='Arial')
         ),
         font=dict(family='Arial'),
