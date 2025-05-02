@@ -396,7 +396,7 @@ def generate_ucs_figure(df, geology_unit):
         template="simple_white"
     )
 
-    return figv
+    return fig
 
 
 # Streamlit UI
