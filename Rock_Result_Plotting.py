@@ -398,6 +398,67 @@ def generate_ucs_figure(df, geology_unit):
 
     return fig
 
+def plot_factored_pli_ucs(df, geology_unit):
+    filtered_df = df[df["Geology Unit"] == geology_unit]
+    y = filtered_df["Elevation (m)"]
+    pli = filtered_df["Factored PLI"]
+    ucs = filtered_df["UCS (MPa)"]
+
+    fig = go.Figure()
+
+    # Plot factored PLI
+    fig.add_trace(go.Scatter(
+        x=pli, y=y,
+        mode='markers',
+        name="Factored PLI",
+        marker=dict(color='blue', symbol='circle', size=8)
+    ))
+
+    # Plot UCS
+    fig.add_trace(go.Scatter(
+        x=ucs, y=y,
+        mode='markers',
+        name="UCS",
+        marker=dict(color='green', symbol='square', size=8)
+    ))
+
+    # Consistency lines
+    consistency_lines = [0.6, 2, 6, 20, 60, 200]
+    consistency_labels = ["VL", "L", "M", "H", "VH", "EH"]
+    min_y, max_y = y.min() - 5, y.max() + 5
+
+    for val, label in zip(consistency_lines, consistency_labels):
+        fig.add_trace(go.Scatter(
+            x=[val, val], y=[min_y, max_y],
+            mode="lines",
+            line=dict(dash="dash", color="red"),
+            name=label,
+            showlegend=False
+        ))
+
+    fig.update_layout(
+        title=dict(text=f"Factored PLI × UCS vs Elevation - {geology_unit}", x=0.5, xanchor='center'),
+        xaxis=dict(
+            title=dict(text="Strength (MPa)", font=dict(family="Arial", size=14)),
+            tickfont=dict(family="Arial", size=12),
+            showgrid=True, gridcolor='lightgray',
+            showline=True, linecolor='black', mirror=True
+        ),
+        yaxis=dict(
+            title=dict(text="Elevation (m AHD)", font=dict(family="Arial", size=14)),
+            tickfont=dict(family="Arial", size=12),
+            autorange=True,
+            showgrid=True, gridcolor='lightgray',
+            showline=True, linecolor='black', mirror=True
+        ),
+        font=dict(family="Arial"),
+        legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
+        margin=dict(l=60, r=160, t=60, b=40)
+    )
+
+    return fig
+
+
 
 # Streamlit UI
 def main():
@@ -405,7 +466,7 @@ def main():
 
     uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx","xls","xlsm"])
     
-    plot_type = st.selectbox("Select plot type:", ["PLI", "UCS"])
+    plot_type = st.selectbox("Select plot type:", ["PLI", "UCS","Factored PLI and UCS"])
 
 
     if uploaded_file:
@@ -415,21 +476,35 @@ def main():
             selected_unit = st.selectbox("Select Geology Unit", sorted(geology_units))
             if plot_type=="PLI" and st.button("Plot"):
                 plot_elevation_vs_pli(uploaded_file, selected_unit)
-            if plot_type=="PLI" and st.button("Plot All"):
+            elif plot_type=="PLI" and st.button("Plot All"):
                 st.info(f"Generating plots for {len(geology_units)} geology units...")
                 for unit in geology_units:
                     st.subheader(f"Elevation vs PLI - {unit}")
                     fig = generate_pli_figure(df, unit)
                     st.plotly_chart(fig, use_container_width=True)
-            if plot_type=="UCS" and st.button("Plot"):
+            elif plot_type=="UCS" and st.button("Plot"):
                 plot_elevation_vs_ucs(uploaded_file, selected_unit)
-            if plot_type=="UCS" and st.button("Plot All"):
+            elif plot_type=="UCS" and st.button("Plot All"):
                 st.info(f"Generating plots for {len(geology_units)} geology units...")
                 for unit in geology_units:
                     st.subheader(f"Elevation vs UCS - {unit}")
                     fig = generate_ucs_figure(df, unit)
                     st.plotly_chart(fig, use_container_width=True)
-                    
+            elif plot_type=="Factored PLI and UCS": 
+                st.write("### Enter a factor for each geology unit")
+                factors = {}
+                for unit in sorted(geology_units):
+                    factor = st.number_input(f"Factor for {unit}", min_value=0.0, value=1.0, step=0.1, key=unit)
+                    factors[unit] = factor
+
+                if st.button("Plot"):
+                    for unit in geology_units:
+                        unit_df = df[df["Geology Unit"] == unit].copy()
+                        unit_df["Factored PLI"] = unit_df["Is(50) corrected (MPa)"] * factors[unit]
+
+                        st.subheader(f"Factored PLI & UCS - {unit}")
+                        fig = plot_factored_pli_ucs(unit_df, unit)
+                        st.plotly_chart(fig, use_container_width=True)
             
         except Exception as e:
             st.error(f"Error reading file: {e}")
