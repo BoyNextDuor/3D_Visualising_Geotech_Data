@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r Requirement.txt
+        pip install -r requirement.txt
 
     - name: Run basic Streamlit check
       run: streamlit Visualising_GI_Data.py --server.headless true &
