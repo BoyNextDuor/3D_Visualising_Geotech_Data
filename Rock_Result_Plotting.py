@@ -60,7 +60,7 @@ def plot_elevation_vs_pli(file_path, geology_unit):
             margin=dict(l=80, r=80, t=60, b=60),
 
             title=dict(
-                text=f"Elevation vs PLI: {geology_unit}",
+                text=f"Elevation vs Is50: {geology_unit}",
                 x=0.5,
                 xanchor='center',
                 yanchor='top',
@@ -75,7 +75,7 @@ def plot_elevation_vs_pli(file_path, geology_unit):
                 linecolor='black',
                 mirror=True,
                 title=dict(
-                    text = "PLI (MPa)",
+                    text = "Is50 (MPa)",
                     font = dict(family="Arial")
                 ),
                 tickfont=dict(family='Arial')
@@ -259,7 +259,7 @@ def generate_pli_figure(df, geology_unit):
             margin=dict(l=80, r=80, t=60, b=60),
 
             title=dict(
-                text=f"Elevation vs PLI: {geology_unit}",
+                text=f"Elevation vs Is50: {geology_unit}",
                 x=0.5,
                 xanchor='center',
                 font=dict(family='Arial', size=20)
@@ -274,7 +274,7 @@ def generate_pli_figure(df, geology_unit):
                 linecolor='black',
                 mirror=True,
                 title=dict(
-                    text = "PLI (MPa)",
+                    text = "Is50 (MPa)",
                     font = dict(
                         family="Arial"
                     )
@@ -396,7 +396,7 @@ def generate_ucs_figure(df, geology_unit):
         template="simple_white"
     )
 
-    return fig
+    return figv
 
 
 # Streamlit UI
