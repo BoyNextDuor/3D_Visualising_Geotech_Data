@@ -67,7 +67,6 @@ def plot_elevation_vs_pli(file_path, geology_unit):
                 font=dict(family='Arial', size=20)
             ),
             xaxis=dict(
-                
                 showgrid=True,
                 gridcolor='lightgray',
                 gridwidth=1,
@@ -77,14 +76,11 @@ def plot_elevation_vs_pli(file_path, geology_unit):
                 mirror=True,
                 title=dict(
                     text = "PLI (MPa)",
-                    font = dict(
-                        family="Arial"
-                    )
+                    font = dict(family="Arial")
                 ),
                 tickfont=dict(family='Arial')
             ),
             yaxis=dict(
-                title="Elevation (m AHD)",
                 autorange=True,
                 showgrid=True,
                 gridcolor='lightgray',
@@ -269,7 +265,7 @@ def generate_pli_figure(df, geology_unit):
                 font=dict(family='Arial', size=20)
             ),
             xaxis=dict(
-                title="PLI (MPa)",
+                
                 showgrid=True,
                 gridcolor='lightgray',
                 gridwidth=1,
@@ -286,7 +282,7 @@ def generate_pli_figure(df, geology_unit):
                 tickfont=dict(family='Arial')
             ),
             yaxis=dict(
-                title="Elevation (m AHD)",
+                
                 #autorange=True,
                 autorange=False,
                 range=[250,305],
@@ -358,7 +354,7 @@ def generate_ucs_figure(df, geology_unit):
             font=dict(family='Arial', size=20)
         ),
         xaxis=dict(
-            title="UCS (MPa)",
+            
             showgrid=True,
             gridcolor='lightgray',
             gridwidth=1,
@@ -375,7 +371,7 @@ def generate_ucs_figure(df, geology_unit):
             tickfont=dict(family='Arial')
         ),
         yaxis=dict(
-            title="Elevation (m AHD)",
+            
             #autorange=True,
             autorange=False,
             range=[250,305],
