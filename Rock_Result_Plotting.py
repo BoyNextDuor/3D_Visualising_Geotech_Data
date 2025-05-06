@@ -398,7 +398,7 @@ def generate_ucs_figure(df, geology_unit):
 
     return fig
 
-def plot_factored_pli_ucs(df, geology_unit):
+def plot_factored_pli_ucs(df, geology_unit,pli_factor):
     filtered_df = df[df["Geology Unit"] == geology_unit]
     y = filtered_df["Elevation (m)"]
     pli = filtered_df["Factored PLI"]
@@ -437,7 +437,7 @@ def plot_factored_pli_ucs(df, geology_unit):
         ))
 
     fig.update_layout(
-        title=dict(text=f"Factored PLI × UCS vs Elevation - {geology_unit}", x=0.5, xanchor='center'),
+        title=dict(text=f"{pli_factor} x PLI & UCS - {geology_unit}", x=0.5, xanchor='center'),
         xaxis=dict(
             title=dict(text="Strength (MPa)", font=dict(family="Arial", size=14)),
             tickfont=dict(family="Arial", size=12),
@@ -503,7 +503,7 @@ def main():
                         unit_df["Factored PLI"] = unit_df["Is(50) corrected (MPa)"] * factors[unit]
 
                         st.subheader(f"Factored PLI & UCS - {unit}")
-                        fig = plot_factored_pli_ucs(unit_df, unit)
+                        fig = plot_factored_pli_ucs(unit_df, unit,factors[unit])
                         st.plotly_chart(fig, use_container_width=True)
             
         except Exception as e:
