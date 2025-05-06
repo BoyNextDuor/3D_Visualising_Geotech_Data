@@ -410,7 +410,7 @@ def plot_factored_pli_ucs(df, geology_unit,pli_factor):
     fig.add_trace(go.Scatter(
         x=pli, y=y,
         mode='markers',
-        name="Factored PLI",
+        name=f"{pli_factor} x PLI",
         marker=dict(color='blue', symbol='circle', size=8)
     ))
 
