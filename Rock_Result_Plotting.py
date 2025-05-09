@@ -237,7 +237,7 @@ def generate_pli_figure(df, geology_unit):
             mode='markers',
             marker=dict(symbol='circle', size=8),
             name=label,
-            showlegend=True
+            showlegend=False
         ))
 
     # Add strength lines
