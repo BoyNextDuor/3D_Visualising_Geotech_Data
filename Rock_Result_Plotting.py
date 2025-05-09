@@ -237,7 +237,7 @@ def generate_pli_figure(df, geology_unit):
             mode='markers',
             marker=dict(symbol='circle', size=8),
             name=label,
-            showlegend=False
+            showlegend=True
         ))
 
     # Add strength lines
@@ -300,6 +300,18 @@ def generate_pli_figure(df, geology_unit):
                     )
                 ),
                 tickfont=dict(family='Arial')
+            ),
+            legend=dict(
+                title='Borehole ID',
+            traceorder="normal",
+            orientation="h",
+            y=-0.15,
+            yanchor="top",
+            # itemsizing='constant',
+            font=dict(size=12),
+            bgcolor='rgba(255,255,255,0.5)',
+            # bordercolor='black',
+            # borderwidth=1
             ),
             font=dict(family='Arial'),
             height=600,
@@ -390,6 +402,18 @@ def generate_ucs_figure(df, geology_unit):
             ),
             tickfont=dict(family='Arial')
         ),
+        legend=dict(
+                title='Borehole ID',
+            traceorder="normal",
+            orientation="h",
+            y=-0.15,
+            yanchor="top",
+            # itemsizing='constant',
+            font=dict(size=12),
+            bgcolor='rgba(255,255,255,0.5)',
+            # bordercolor='black',
+            # borderwidth=1
+            ),
         font=dict(family='Arial'),
         height=600,
         width=800,
