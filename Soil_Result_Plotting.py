@@ -60,7 +60,7 @@ def plot_psd_for_unit(df_psd, selected_unit):
 
     def calculate_contents_psd(sample):
         try:
-            gravel = 100 - sample[4.75]
+            gravel = 100 - sample[2.36]
             sand = sample[2.36] - sample[0.075]
             fines = sample[0.075]
             return pd.Series([gravel, sand, fines], index=['Gravel Content', 'Sand Content', 'Fines Content'])
