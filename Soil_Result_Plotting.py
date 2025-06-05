@@ -194,11 +194,21 @@ def plot_atterberg_limits_chart_plotly(df_atterberg):
     df_atterberg['LL'] = pd.to_numeric(df_atterberg['LL'], errors='coerce')
     df_atterberg['PI'] = pd.to_numeric(df_atterberg['PI'], errors='coerce')
 
+    # Drop rows with missing LL, PI, or Geology Unit
+    df_atterberg = df_atterberg.dropna(subset=['LL', 'PI', 'Geology Unit'])
+
+    # Get list of unique geology units
+    units = df_atterberg['Geology Unit'].unique()
+    selected_units = st.multiselect("Select Geology Unit(s) to Display", sorted(units), default=units)
+
+    # Filter based on selection
+    df_filtered = df_atterberg[df_atterberg['Geology Unit'].isin(selected_units)]
+
     # A-line and U-line functions
     def a_line(ll): return 0.73 * (ll - 20)
     def u_line(ll): return 0.9 * (ll - 8)
 
-    # Calculate points
+    # A-line and U-line values
     A_ll_vals = np.linspace((4 / 0.73) + 20, 100, 200)
     U_ll_vals = np.linspace((7.5 / 0.9) + 8, 100, 200)
     a_line_vals = a_line(A_ll_vals)
@@ -206,56 +216,33 @@ def plot_atterberg_limits_chart_plotly(df_atterberg):
 
     fig = go.Figure()
 
-    # Scatter plot for data points
-    fig.add_trace(go.Scatter(
-        x=df_atterberg['LL'],
-        y=df_atterberg['PI'],
-        mode='markers',
-        name='Samples',
-        marker=dict(color='red', size=8, opacity=0.6)
-    ))
+    # Plot filtered data
+    for unit in selected_units:
+        unit_data = df_filtered[df_filtered['Geology Unit'] == unit]
+        fig.add_trace(go.Scatter(
+            x=unit_data['LL'],
+            y=unit_data['PI'],
+            mode='markers',
+            name=unit,
+            marker=dict(size=8),
+            opacity=0.6
+        ))
 
-    # A-line
-    fig.add_trace(go.Scatter(
-        x=A_ll_vals, y=a_line_vals,
-        mode='lines',
-        name='A-line (PI = 0.73(LL - 20))',
-        line=dict(color='black')
-    ))
+    # A-line and U-line
+    fig.add_trace(go.Scatter(x=A_ll_vals, y=a_line_vals, mode='lines', name='A-line', line=dict(color='black')))
+    fig.add_trace(go.Scatter(x=U_ll_vals, y=u_line_vals, mode='lines', name='U-line', line=dict(color='black', dash='dot')))
 
-    # U-line
-    fig.add_trace(go.Scatter(
-        x=U_ll_vals, y=u_line_vals,
-        mode='lines',
-        name='U-line (PI = 0.9(LL - 8))',
-        line=dict(color='black', dash='dot')
-    ))
-
-    # Horizontal lines for CL and ML
+    # Horizontal CL & ML lines
     a_line_cl_x = (7.5 / 0.73) + 20
     a_line_ml_x = (4 / 0.73) + 20
-    fig.add_trace(go.Scatter(
-        x=[0, a_line_cl_x], y=[7.5, 7.5],
-        mode='lines',
-        name='CL line (PI=7.5)',
-        line=dict(color='black', dash='dot')
-    ))
-    fig.add_trace(go.Scatter(
-        x=[0, a_line_ml_x], y=[4, 4],
-        mode='lines',
-        name='ML line (PI=4)',
-        line=dict(color='black', dash='dot')
-    ))
+    fig.add_trace(go.Scatter(x=[0, a_line_cl_x], y=[7.5, 7.5], mode='lines', name='PI = 7.5', line=dict(color='black', dash='dot')))
+    fig.add_trace(go.Scatter(x=[0, a_line_ml_x], y=[4, 4], mode='lines', name='PI = 4', line=dict(color='black', dash='dot')))
 
-    # Vertical lines at LL=35 and LL=50
-    fig.add_shape(type='line', x0=35, x1=35,
-                  y0=a_line(35), y1=u_line(35),
-                  line=dict(color='black'))
-    fig.add_shape(type='line', x0=50, x1=50,
-                  y0=0, y1=u_line(50),
-                  line=dict(color='black'))
+    # Vertical LL markers
+    fig.add_shape(type='line', x0=35, x1=35, y0=a_line(35), y1=u_line(35), line=dict(color='black'))
+    fig.add_shape(type='line', x0=50, x1=50, y0=0, y1=u_line(50), line=dict(color='black'))
 
-    # Text annotations (soil types)
+    # Annotations
     annotations = [
         dict(x=70, y=45, text="MH or OH", showarrow=False),
         dict(x=80, y=20, text="CH or OH", showarrow=False),
@@ -268,19 +255,64 @@ def plot_atterberg_limits_chart_plotly(df_atterberg):
     ]
     fig.update_layout(annotations=annotations)
 
-    # Axes, layout
+    # Axes and layout
     fig.update_layout(
-        title=dict(text="Casagrande Plasticity Chart", x=0.5, xanchor='center'),
-        xaxis=dict(title="Liquid Limit (%)", range=[0, 100], showgrid=True, mirror=True, showline= True, dtick=10),
-        yaxis=dict(title="Plasticity Index (%)", range=[0, 60], showgrid=True, mirror=True, showline= True),
-        legend=dict(yanchor="bottom", y=-0.25, orientation="h", bgcolor='rgba(255,255,255,0.7)', borderwidth=1),
+        title=dict(text=f"Casagrande Plasticity Chart - {unit}", x=0.5,xanchor="center"),
+        xaxis=dict(title="Liquid Limit (%)", range=[0, 100], showgrid=True, dtick=10, showline=True, mirror=True),
+        yaxis=dict(title="Plasticity Index (%)", range=[0, 80], showgrid=True, showline=True, mirror=True),
+        legend=dict(yanchor="bottom", y=-0.35, orientation="h", bgcolor='rgba(255,255,255,0.7)', borderwidth=1),
         margin=dict(t=40, b=40, l=40, r=40),
-        height=600,
-        width=800
+        height=600
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
+def plot_moisture_content_by_unit(df):
+    # # Ensure required columns are present
+    required_cols = ['Geology Unit', 'ID', 'Elevation (m)', 'Moisture Content (%)']
+    # if not all(col in df.columns for col in required_cols):
+    #     st.error("Missing required columns in the data.")
+    #     return
+
+    # Drop rows with missing key values
+    df = df.dropna(subset=required_cols)
+
+    # Convert to numeric if needed
+    df['Elevation (m)'] = pd.to_numeric(df['Elevation (m)'], errors='coerce')
+    df['Moisture Content (%)'] = pd.to_numeric(df['Moisture Content (%)'], errors='coerce')
+
+    # Let user select units
+    unique_units = df["Geology Unit"].dropna().unique()
+    selected_units = st.multiselect("Select Geology Unit(s)", sorted(unique_units), default=unique_units)
+
+    for unit in selected_units:
+        df_unit = df[df["Geology Unit"] == unit].copy()
+
+        fig = go.Figure()
+
+        for bh_id in df_unit['ID'].unique():
+            bh_data = df_unit[df_unit['ID'] == bh_id]
+            fig.add_trace(go.Scatter(
+                x=bh_data['Moisture Content (%)'],
+                y=bh_data['Elevation (m)'],
+                mode='markers',
+                name=str(bh_id),
+                marker=dict(size=6),
+                line=dict(width=1),
+                opacity=0.8
+            ))
+
+        fig.update_layout(
+            title=dict(text=f"Elevation vs Moisture Content – {unit}", x=0.5, xanchor="center"),
+            xaxis=dict(title="Moisture Content (%)", range=[0, 100], dtick=10),
+            yaxis=dict(title="Elevation (m)", autorange=True),
+            height=600,
+            width=800,
+            legend=dict(yanchor="bottom",y=-0.3, orientation="h"),
+            margin=dict(t=40, b=40, l=40, r=40),
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
 
 def main():
     st.title("Soil Results Plotter")
@@ -302,6 +334,10 @@ def main():
                 df_atterberg = pd.read_excel(uploaded_file, sheet_name='Atterberg Limits')
                 st.subheader("Cassagrande Chart")
                 plot_atterberg_limits_chart_plotly(df_atterberg)
+            elif plot_type=="Moisture Content":
+                df_mc = pd.read_excel(uploaded_file, sheet_name='Moisture Content')
+                st.subheader("Moisture Content Chart")
+                plot_moisture_content_by_unit(df_mc)
             
             
         except Exception as e:
@@ -321,4 +357,3 @@ if __name__ == "__main__":
 
 
     
-
