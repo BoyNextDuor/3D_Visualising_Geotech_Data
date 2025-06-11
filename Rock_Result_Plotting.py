@@ -32,7 +32,7 @@ def plot_elevation_vs_pli(file_path, geology_unit):
 
     # Add data points
     for _, row in filtered_df.iterrows():
-        label = f"{row['ID']}: {row['From (m)']} - {row['To (m)']}m"
+        label = f"{row['ID']}: {row['From (m)']}m"
         fig.add_trace(go.Scatter(
             x=[row["Is(50) corrected (MPa)"]],
             y=[row["Elevation (m)"]],
@@ -136,7 +136,7 @@ def plot_elevation_vs_ucs(file_path, geology_unit):
 
     # Add data points
     for _, row in filtered_df.iterrows():
-        label = f"{row['ID']}: {row['From (m)']} - {row['To (m)']}m"
+        label = f"{row['ID']}: {row['From (m)']}m"
         fig.add_trace(go.Scatter(
             x=[row["UCS (MPa)"]],
             y=[row["Elevation (m)"]],
@@ -230,7 +230,7 @@ def generate_pli_figure(df, geology_unit):
     fig = go.Figure()
 
     for _, row in filtered_df.iterrows():
-        label = f"{row['ID']}: {row['From (m)']} - {row['To (m)']}m"
+        label = f"{row['ID']}: {row['From (m)']}m"
         fig.add_trace(go.Scatter(
             x=[row["Is(50) corrected (MPa)"]],
             y=[row["Elevation (m)"]],
@@ -331,7 +331,7 @@ def generate_ucs_figure(df, geology_unit):
     fig = go.Figure()
 
     for _, row in filtered_df.iterrows():
-        label = f"{row['ID']}: {row['From (m)']} - {row['To (m)']}m"
+        label = f"{row['ID']}: {row['From (m)']}m"
         fig.add_trace(go.Scatter(
             x=[row["UCS (MPa)"]],
             y=[row["Elevation (m)"]],
