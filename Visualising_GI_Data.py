@@ -35,7 +35,7 @@ if uploaded_file:
     def plot_moisture_heatmap(uploaded_file, df_points):
         moisture_sheet = "Moisture Content"
         df_moisture = pd.read_excel(uploaded_file, sheet_name=moisture_sheet)
-        df_moisture = df_moisture[["ID", "Origin", "From (m)", "To (m)", "Elevation (m)", "Moisture Content (%)"]]
+        df_moisture = df_moisture[["ID", "Geology Unit", "From (m)", "To (m)", "Elevation (m)", "Moisture Content (%)"]]
 
         df_moisture_merged = df_moisture.merge(df_points, left_on="ID", right_on="PointID")
         df_moisture_merged.rename(columns={"Elevation (m)": "Sample_Elevation"}, inplace=True)
