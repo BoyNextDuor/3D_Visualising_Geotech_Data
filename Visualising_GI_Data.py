@@ -52,7 +52,7 @@ if uploaded_file:
                     colorscale='Viridis',
                     colorbar=dict(title="Moisture Content (%)")
                 ),
-                text=df_moisture_merged.apply(lambda row: f"ID: {row['ID']} ({row['From (m)']} - {row['To (m)']}m)<br>Moisture Content: {row['Moisture Content (%)']}%<br>Geology Unit: {row['Origin']}", axis=1),
+                text=df_moisture_merged.apply(lambda row: f"ID: {row['ID']} ({row['From (m)']} - {row['To (m)']}m)<br>Moisture Content: {row['Moisture Content (%)']}%<br>Geology Unit: {row['Geology Unit']}", axis=1),
                 hoverinfo='text'
             )
         )
