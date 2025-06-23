@@ -26,7 +26,8 @@ def plot_psd_for_unit(df_psd, selected_unit):
 
     # Filter data for selected unit
     df_selected = df_psd[df_psd["Geology Unit"] == selected_unit]
-    grouped = df_psd.groupby("Geology Unit")[sieve_sizes_psd].mean().T
+    grouped = df_selected[sieve_sizes_psd].mean().to_frame(name=selected_unit)
+
 
 
     fig = go.Figure()
