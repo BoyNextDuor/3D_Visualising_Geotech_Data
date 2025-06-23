@@ -198,7 +198,7 @@ def plot_atterberg_limits_chart_plotly(df_atterberg):
     df_atterberg['PI'] = pd.to_numeric(df_atterberg['PI'], errors='coerce')
 
     # Drop rows with missing LL, PI, or Geology Unit
-    df_atterberg = df_atterberg.dropna(subset=['LL', 'PI', 'Geology Unit'])
+    df_atterberg = df_atterberg.dropna(subset=['ID','From (m)', 'LL', 'PI', 'Geology Unit'])
 
     # Get list of unique geology units
     units = df_atterberg['Geology Unit'].unique()
@@ -226,7 +226,7 @@ def plot_atterberg_limits_chart_plotly(df_atterberg):
             x=unit_data['LL'],
             y=unit_data['PI'],
             mode='markers',
-            name=unit,
+            name=f"{unit_data['ID']}@{unit_data['From (m)']}",
             marker=dict(size=8),
             opacity=0.6
         ))
