@@ -794,7 +794,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
             elif plot_type =="Atterberg Limits":
                 
-                st.subheader("Cassagrande Chart")
+                st.subheader("Casagrande Chart")
                 plot_atterberg_limits_chart_plotly(df_atterberg)
             elif plot_type=="Moisture Content":
                
