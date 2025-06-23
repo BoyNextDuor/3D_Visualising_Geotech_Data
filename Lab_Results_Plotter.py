@@ -34,7 +34,7 @@ def plot_psd_for_unit(df_psd, selected_unit):
     for i, (idx, row) in enumerate(df_selected.iterrows()):
         y = row[sieve_sizes_psd].values.astype(float)
         fig.add_trace(go.Scatter(
-            x=sieve_sizes,
+            x=sieve_sizes_psd,
             y=y,
             mode='lines+markers',
             name=row['ID'],
