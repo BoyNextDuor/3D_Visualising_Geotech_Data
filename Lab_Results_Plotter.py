@@ -37,7 +37,7 @@ def plot_psd_for_unit(df_psd, selected_unit):
             x=sieve_sizes_psd,
             y=y,
             mode='lines+markers',
-            name=row['ID'],
+            name=f"{row['ID']}@{row['From (m)']}m",
             line=dict(color=color_list[i % len(color_list)])
         ))
 
