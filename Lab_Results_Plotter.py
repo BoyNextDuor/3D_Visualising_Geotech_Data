@@ -226,7 +226,7 @@ def plot_atterberg_limits_chart_plotly(df_atterberg):
             x=unit_data['LL'],
             y=unit_data['PI'],
             mode='markers',
-            name=f"{unit_data['ID']}@{unit_data['From (m)']}",
+            name=unit,
             marker=dict(size=8),
             opacity=0.6
         ))
