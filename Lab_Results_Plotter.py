@@ -227,8 +227,8 @@ def plot_atterberg_limits_chart_plotly(df_atterberg):
             y=unit_data['PI'],
             mode='markers',
             name=unit,
-            text=unit_data['ID'],  # This will show ID on hover
-            hovertemplate='<b>ID:</b> %{text}<br>LL: %{x:.1f}<br>PI: %{y:.1f}<extra></extra>',
+            text=unit_data.apply(lambda row: f"{row['ID']}@{row['From (m)']:.2f}", axis=1),
+            hovertemplate='<b>%{text}</b><br>LL: %{x:.1f}<br>PI: %{y:.1f}<extra></extra>',
             marker=dict(size=8),
             opacity=0.6
         ))
