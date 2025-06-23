@@ -26,21 +26,21 @@ def plot_psd_for_unit(df_psd, selected_unit):
 
     # Filter data for selected unit
     df_selected = df_psd[df_psd["Geology Unit"] == selected_unit]
-    grouped = df_selected[sieve_sizes_psd].mean().to_frame(name=selected_unit)
-
-
+    grouped = df_selected.groupby('ID')[sieve_sizes_psd].mean().T
 
     fig = go.Figure()
     color_list = px.colors.qualitative.Dark24
-
-    for i, column in enumerate(grouped.columns):
+    
+    for i, (idx, row) in enumerate(df_selected.iterrows()):
+        y = row[sieve_sizes_psd].values.astype(float)
         fig.add_trace(go.Scatter(
-            x=grouped.index.astype(float),
-            y=grouped[column],
+            x=sieve_sizes,
+            y=y,
             mode='lines+markers',
-            name=column,
+            name=row['ID'],
             line=dict(color=color_list[i % len(color_list)])
         ))
+
 
 
     def add_range_box(fig, x_range, label, color, y0=0, y1=10):
