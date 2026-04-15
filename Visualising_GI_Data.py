@@ -159,7 +159,7 @@ if uploaded_file:
         df_strata_merged = df_strata_with_soil.merge(df_points, on="PointID")
         df_strata_merged["Bottom_Elev"] = df_strata_merged["Elevation"] - df_strata_merged["Bottom"]
         df_strata_merged["Top_Elev"] = df_strata_merged["Elevation"] - df_strata_merged["Depth"]
-        df_strata_merged["Geology_Unit"] = df_strata_merged["Geology_Unit"].astype(str)
+        df_strata_merged["Geology_Unit"] = df_strata_merged["Geology_Unit"].fillna("NA").astype(str).str.strip()
 
         # Sidebar: Color picker
         with st.sidebar.expander("Choose Colors for Geology Units", expanded=False):
