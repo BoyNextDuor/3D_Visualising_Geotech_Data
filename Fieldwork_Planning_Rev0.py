@@ -11,15 +11,21 @@ import json
 import os
 from datetime import datetime, timedelta, date
 from io import BytesIO
-from openai import OpenAI
-client = OpenAI(
-    api_key=st.secrets["OPENAI_API_KEY"]
-)
 
 import pandas as pd
 import plotly.graph_objects as go
+from openai import OpenAI
 import streamlit as st
 
+if "OPENAI_API_KEY" not in st.secrets:
+    st.error(
+        "OPENAI_API_KEY not found. Please add it to Streamlit Secrets."
+    )
+    st.stop()
+
+client = OpenAI(
+    api_key=st.secrets["OPENAI_API_KEY"]
+)
 
 # --------------------------------------------------
 # Default tables
