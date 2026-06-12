@@ -11,6 +11,10 @@ import json
 import os
 from datetime import datetime, timedelta, date
 from io import BytesIO
+from openai import OpenAI
+client = OpenAI(
+    api_key=st.secrets["OPENAI_API_KEY"]
+)
 
 import pandas as pd
 import plotly.graph_objects as go
