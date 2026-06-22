@@ -186,6 +186,47 @@ COLOR_OPTIONS = [
 ]
 
 
+
+
+
+def default_task_cost_items():
+    """Default editable cost build-up table. One task can have multiple rate items."""
+    return pd.DataFrame([
+        {
+            "Task_ID": "BH01",
+            "Cost_Item_ID": "BH01-001",
+            "Subcontractor_ID": "DRILLER01",
+            "Subcontractor_Name": "Example Drilling Contractor",
+            "Subcontractor_Type": "Driller",
+            "Rate_Item": "Drilling",
+            "Unit": "m",
+            "Quantity": 20.0,
+            "Rate": 0.0,
+            "Rate_Type": "Unit",
+            "Amount": 0.0,
+            "AI_Selected": False,
+            "User_Confirmed": True,
+            "Notes": "Example drilling per metre item. Add establishment, daily rate, traffic control, etc. as separate rows.",
+        },
+        {
+            "Task_ID": "BH01",
+            "Cost_Item_ID": "BH01-002",
+            "Subcontractor_ID": "DRILLER01",
+            "Subcontractor_Name": "Example Drilling Contractor",
+            "Subcontractor_Type": "Driller",
+            "Rate_Item": "Drill Rig Daily Rate",
+            "Unit": "day",
+            "Quantity": 1.0,
+            "Rate": 2500.0,
+            "Rate_Type": "Daily",
+            "Amount": 2500.0,
+            "AI_Selected": False,
+            "User_Confirmed": True,
+            "Notes": "Example daily rate item. Adjust based on actual rate schedule.",
+        },
+    ])
+
+
 # --------------------------------------------------
 # Data validation / normalisation
 # --------------------------------------------------
@@ -387,6 +428,150 @@ def get_rate_item_options() -> list[str]:
         return [""]
     items = st.session_state.subcontractor_rates_df.get("Item", pd.Series(dtype=str)).dropna().astype(str).unique().tolist()
     return [""] + items
+
+
+
+def normalize_task_cost_items_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalise task cost build-up table. One task can have multiple rate items."""
+    if df is None or df.empty:
+        df = pd.DataFrame(columns=[
+            "Task_ID", "Cost_Item_ID", "Subcontractor_ID", "Subcontractor_Name", "Subcontractor_Type",
+            "Rate_Item", "Unit", "Quantity", "Rate", "Rate_Type", "Amount",
+            "AI_Selected", "User_Confirmed", "Notes",
+        ])
+    else:
+        df = df.copy()
+
+    required_defaults = {
+        "Task_ID": "",
+        "Cost_Item_ID": "",
+        "Subcontractor_ID": "",
+        "Subcontractor_Name": "",
+        "Subcontractor_Type": "",
+        "Rate_Item": "",
+        "Unit": "",
+        "Quantity": 0.0,
+        "Rate": 0.0,
+        "Rate_Type": "Unit",
+        "Amount": 0.0,
+        "AI_Selected": False,
+        "User_Confirmed": True,
+        "Notes": "",
+    }
+    for col, default in required_defaults.items():
+        if col not in df.columns:
+            df[col] = default
+
+    for col in ["Task_ID", "Cost_Item_ID", "Subcontractor_ID", "Subcontractor_Name", "Subcontractor_Type", "Rate_Item", "Unit", "Rate_Type", "Notes"]:
+        df[col] = df[col].fillna("").astype(str)
+    for col in ["Quantity", "Rate", "Amount"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+    for col in ["AI_Selected", "User_Confirmed"]:
+        df[col] = df[col].fillna(False).astype(bool)
+
+    # Add stable IDs if blank.
+    for i, row in df.iterrows():
+        if not str(row["Cost_Item_ID"]).strip():
+            task_id = str(row.get("Task_ID", "TASK")).strip() or "TASK"
+            df.at[i, "Cost_Item_ID"] = f"{task_id}-C{i+1:03d}"
+
+    ordered_cols = list(required_defaults.keys())
+    extra_cols = [c for c in df.columns if c not in ordered_cols]
+    return df[ordered_cols + extra_cols].reset_index(drop=True)
+
+
+def get_rate_item_lookup(subcontractor_rates_df: pd.DataFrame) -> dict:
+    """Create lookup by (subcontractor name, item) and by item only."""
+    rates = normalize_subcontractor_rates_df(subcontractor_rates_df)
+    lookup = {}
+    for _, row in rates.iterrows():
+        item = str(row.get("Item", "")).strip()
+        sub_name = str(row.get("Subcontractor_Name", "")).strip()
+        if not item:
+            continue
+        rate_type = str(row.get("Rate_Type", "Unit")).strip() or "Unit"
+        unit = str(row.get("Unit", "")).strip()
+        if rate_type == "Daily":
+            rate = float(row.get("Daily_Rate", 0.0) or 0.0)
+        elif rate_type == "Allowance":
+            rate = float(row.get("Unit_Rate", 0.0) or row.get("Daily_Rate", 0.0) or 0.0)
+        else:
+            rate = float(row.get("Unit_Rate", 0.0) or row.get("Daily_Rate", 0.0) or 0.0)
+        value = {
+            "Subcontractor_ID": row.get("Subcontractor_ID", ""),
+            "Subcontractor_Name": sub_name,
+            "Subcontractor_Type": row.get("Subcontractor_Type", ""),
+            "Rate_Item": item,
+            "Unit": unit,
+            "Rate": rate,
+            "Rate_Type": rate_type,
+        }
+        lookup[(sub_name.lower(), item.lower())] = value
+        lookup[("", item.lower())] = value
+    return lookup
+
+
+def calculate_task_cost_items(task_cost_items_df: pd.DataFrame, subcontractor_rates_df: pd.DataFrame, program_df: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Fill rate and amount for task cost build-up rows using the subcontractor rate schedule.
+
+    If Quantity is blank/0, this does not guess except for common rate types:
+    - Daily: uses task Duration_days if available
+    - Unit with m: uses task Depth_m if available
+    - Allowance: uses 1
+    """
+    items = normalize_task_cost_items_df(task_cost_items_df)
+    lookup = get_rate_item_lookup(subcontractor_rates_df)
+
+    task_info = {}
+    if program_df is not None and not program_df.empty:
+        for _, r in program_df.iterrows():
+            task_info[str(r.get("Task_ID", "")).strip()] = r
+    elif "tasks_df" in st.session_state:
+        for _, r in st.session_state.tasks_df.iterrows():
+            task_info[str(r.get("Task_ID", "")).strip()] = r
+
+    for i, row in items.iterrows():
+        item = str(row.get("Rate_Item", "")).strip()
+        sub_name = str(row.get("Subcontractor_Name", "")).strip()
+        key = (sub_name.lower(), item.lower())
+        details = lookup.get(key) or lookup.get(("", item.lower()))
+        if details:
+            for col in ["Subcontractor_ID", "Subcontractor_Name", "Subcontractor_Type", "Unit", "Rate_Type"]:
+                if not str(items.at[i, col]).strip():
+                    items.at[i, col] = details.get(col, "")
+            if float(items.at[i, "Rate"] or 0.0) == 0.0:
+                items.at[i, "Rate"] = float(details.get("Rate", 0.0) or 0.0)
+
+        qty = float(items.at[i, "Quantity"] or 0.0)
+        task_id = str(row.get("Task_ID", "")).strip()
+        trow = task_info.get(task_id)
+        rate_type = str(items.at[i, "Rate_Type"]).strip()
+        unit = str(items.at[i, "Unit"]).strip().lower()
+        if qty <= 0 and trow is not None:
+            if rate_type == "Daily" or unit in ["day", "days"]:
+                qty = float(trow.get("Duration_days", 0.0) or 0.0)
+            elif unit in ["m", "metre", "meter", "metres", "meters"]:
+                qty = float(trow.get("Depth_m", 0.0) or 0.0)
+            elif rate_type == "Allowance":
+                qty = 1.0
+            items.at[i, "Quantity"] = qty
+
+        rate = float(items.at[i, "Rate"] or 0.0)
+        items.at[i, "Amount"] = qty * rate
+
+    return items
+
+
+def summarize_cost_items(cost_items_df: pd.DataFrame) -> pd.DataFrame:
+    cost_items = normalize_task_cost_items_df(cost_items_df)
+    if cost_items.empty:
+        return pd.DataFrame(columns=["Cost_Type", "Total_Cost"])
+    summary_rows = []
+    by_sub = cost_items.groupby("Subcontractor_Name", dropna=False)["Amount"].sum().reset_index()
+    for _, row in by_sub.iterrows():
+        name = str(row.get("Subcontractor_Name", "")).strip() or "Unassigned"
+        summary_rows.append({"Cost_Type": f"Subcontractor - {name}", "Total_Cost": float(row.get("Amount", 0.0) or 0.0)})
+    return pd.DataFrame(summary_rows).sort_values("Cost_Type").reset_index(drop=True)
 
 
 # --------------------------------------------------
@@ -790,36 +975,40 @@ def dataframe_to_excel_bytes(dfs):
     return output.getvalue()
 
 
-def estimate_program_cost(program_df: pd.DataFrame, rates_df: pd.DataFrame, soil_lab_df: pd.DataFrame, rock_lab_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Estimate costs using daily rates for scheduled production tasks and selected lab test rates.
+def estimate_program_cost(
+    program_df: pd.DataFrame,
+    rates_df: pd.DataFrame,
+    soil_lab_df: pd.DataFrame,
+    rock_lab_df: pd.DataFrame,
+    task_cost_items_df: pd.DataFrame | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Estimate cost from editable multi-item cost build-up plus selected lab tests."""
+    if task_cost_items_df is None:
+        task_cost_items_df = st.session_state.get("task_cost_items_df", pd.DataFrame())
 
-    Fieldwork cost is calculated as Duration_days × Daily_Rate where Task_Type matches
-    an item in the production rates table. Non-production task types will show zero
-    unless the user adds a matching item to the production rates table.
-    """
-    rates = normalize_rates_df(rates_df)
-    rate_lookup = {
-        str(row["Item"]).strip().lower(): float(row.get("Daily_Rate", 0.0) or 0.0)
-        for _, row in rates.iterrows()
-    }
+    cost_items = calculate_task_cost_items(
+        task_cost_items_df,
+        st.session_state.get("subcontractor_rates_df", pd.DataFrame()),
+        program_df,
+    )
 
-    program_rows = []
-    if program_df is not None and not program_df.empty:
-        for _, row in program_df.iterrows():
-            task_type = str(row.get("Task_Type", "")).strip()
-            duration = float(row.get("Duration_days", 0) or 0)
-            daily_rate = rate_lookup.get(task_type.lower(), 0.0)
-            total = duration * daily_rate
-            program_rows.append({
-                "Cost_Type": "Program Task",
-                "Task_ID": row.get("Task_ID", ""),
-                "Location_ID": row.get("Location_ID", ""),
-                "Item": task_type,
-                "Quantity": duration,
-                "Unit": "day",
-                "Rate": daily_rate,
-                "Total_Cost": total,
-            })
+    cost_rows = []
+    for _, row in cost_items.iterrows():
+        cost_rows.append({
+            "Cost_Type": "Task Cost Item",
+            "Task_ID": row.get("Task_ID", ""),
+            "Cost_Item_ID": row.get("Cost_Item_ID", ""),
+            "Subcontractor_ID": row.get("Subcontractor_ID", ""),
+            "Subcontractor_Name": row.get("Subcontractor_Name", ""),
+            "Subcontractor_Type": row.get("Subcontractor_Type", ""),
+            "Item": row.get("Rate_Item", ""),
+            "Quantity": float(row.get("Quantity", 0.0) or 0.0),
+            "Unit": row.get("Unit", ""),
+            "Rate": float(row.get("Rate", 0.0) or 0.0),
+            "Rate_Type": row.get("Rate_Type", ""),
+            "Total_Cost": float(row.get("Amount", 0.0) or 0.0),
+            "Notes": row.get("Notes", ""),
+        })
 
     lab_rows = []
     for lab_type, lab_df in [("Soil Lab", soil_lab_df), ("Rock Lab", rock_lab_df)]:
@@ -830,17 +1019,25 @@ def estimate_program_cost(program_df: pd.DataFrame, rates_df: pd.DataFrame, soil
             lab_rows.append({
                 "Cost_Type": lab_type,
                 "Task_ID": "",
-                "Location_ID": "",
+                "Cost_Item_ID": "",
+                "Subcontractor_ID": "",
+                "Subcontractor_Name": "Laboratory",
+                "Subcontractor_Type": "Laboratory",
                 "Item": row.get("Test", ""),
                 "Quantity": 1,
                 "Unit": "test",
                 "Rate": rate,
+                "Rate_Type": "Unit",
                 "Total_Cost": rate,
+                "Notes": "Selected laboratory test allowance.",
             })
 
-    cost_df = pd.DataFrame(program_rows + lab_rows)
+    cost_df = pd.DataFrame(cost_rows + lab_rows)
     if cost_df.empty:
-        cost_df = pd.DataFrame(columns=["Cost_Type", "Task_ID", "Location_ID", "Item", "Quantity", "Unit", "Rate", "Total_Cost"])
+        cost_df = pd.DataFrame(columns=[
+            "Cost_Type", "Task_ID", "Cost_Item_ID", "Subcontractor_ID", "Subcontractor_Name", "Subcontractor_Type",
+            "Item", "Quantity", "Unit", "Rate", "Rate_Type", "Total_Cost", "Notes"
+        ])
 
     summary_df = (
         cost_df.groupby("Cost_Type", dropna=False)["Total_Cost"]
@@ -848,6 +1045,12 @@ def estimate_program_cost(program_df: pd.DataFrame, rates_df: pd.DataFrame, soil
         .reset_index()
         .sort_values("Cost_Type")
     ) if not cost_df.empty else pd.DataFrame(columns=["Cost_Type", "Total_Cost"])
+
+    # Also show subcontractor subtotal for task cost items.
+    if not cost_items.empty:
+        sub_summary = summarize_cost_items(cost_items)
+        if not sub_summary.empty:
+            summary_df = pd.concat([summary_df, sub_summary], ignore_index=True)
 
     return cost_df, summary_df
 
@@ -1052,6 +1255,9 @@ Production rates used for duration calculation:
 Subcontractor rate schedule:
 {dataframe_to_context_text(st.session_state.get("subcontractor_rates_df", pd.DataFrame()))}
 
+Existing task cost build-up items:
+{dataframe_to_context_text(st.session_state.get("task_cost_items_df", pd.DataFrame()))}
+
 Investigation tasks:
 {dataframe_to_context_text(tasks_df)}
 
@@ -1253,6 +1459,9 @@ Production rates used for duration calculation:
 Subcontractor rate schedule:
 {dataframe_to_context_text(st.session_state.get("subcontractor_rates_df", pd.DataFrame()))}
 
+Existing task cost build-up items:
+{dataframe_to_context_text(st.session_state.get("task_cost_items_df", pd.DataFrame()))}
+
 Investigation tasks:
 {dataframe_to_context_text(tasks_df)}
 
@@ -1279,8 +1488,9 @@ Key matters to consider:
 - Density and criticality of underground services based on BYDA information.
 - Access constraints, restricted working hours, permits, inductions, and public holidays.
 - Anticipated ground and groundwater conditions from the borehole database where available.
-- Assign a suitable subcontractor and rate item from the subcontractor rate schedule where a task clearly relates to a listed item.
-- Use the listed rates to estimate a rough cost for each task where possible. If no suitable rate item is available, leave Assigned_Subcontractor, Rate_Item and Estimated_Cost blank or 0.
+- For each task, select all likely applicable subcontractor rate items, not only one item. For example, a borehole may need rig establishment, daily rig rate, drilling per metre, traffic control, service locating/potholing, standpipe installation, reinstatement and lab tests.
+- Use the listed subcontractor rates to build a separate task_cost_items table. If quantity is uncertain, provide a reasonable placeholder only when strongly supported by the task duration/depth; otherwise use 0 and explain in Notes.
+- Keep cost calculations traceable: each cost item must identify Task_ID, subcontractor, rate item, unit, quantity, rate, amount and notes.
 
 Return JSON only, with this structure:
 {{
@@ -1306,10 +1516,25 @@ Return JSON only, with this structure:
       "Distance_Notes": "",
       "Overhead_Spotter": "",
       "Services_Risk": "",
-      "Groundwater_Risk": "",
-      "Assigned_Subcontractor": "",
-      "Rate_Item": "",
-      "Estimated_Cost": 0
+      "Groundwater_Risk": ""
+    }}
+  ],
+  "task_cost_items": [
+    {{
+      "Task_ID": "BH01",
+      "Cost_Item_ID": "BH01-C001",
+      "Subcontractor_ID": "DRILLER01",
+      "Subcontractor_Name": "Example Drilling Contractor",
+      "Subcontractor_Type": "Driller",
+      "Rate_Item": "Drill Rig Establishment",
+      "Unit": "item",
+      "Quantity": 1,
+      "Rate": 0,
+      "Rate_Type": "Allowance",
+      "Amount": 0,
+      "AI_Selected": true,
+      "User_Confirmed": false,
+      "Notes": "Selected because borehole drilling usually requires establishment; confirm against rate schedule."
     }}
   ],
   "general_comments": "short summary"
@@ -1486,6 +1711,10 @@ if "cost_df" not in st.session_state:
     st.session_state.cost_df = pd.DataFrame()
 if "cost_summary_df" not in st.session_state:
     st.session_state.cost_summary_df = pd.DataFrame()
+if "task_cost_items_df" not in st.session_state:
+    st.session_state.task_cost_items_df = default_task_cost_items()
+if "ai_task_cost_items_df" not in st.session_state:
+    st.session_state.ai_task_cost_items_df = pd.DataFrame()
 
 st.session_state.subcontractors_df = normalize_subcontractors_df(st.session_state.subcontractors_df)
 st.session_state.subcontractor_rates_df = normalize_subcontractor_rates_df(st.session_state.subcontractor_rates_df)
@@ -1493,6 +1722,8 @@ st.session_state.rates_df = sync_rates_from_subcontractor_rates(st.session_state
 st.session_state.soil_lab_df = normalize_lab_tests_df(st.session_state.soil_lab_df)
 st.session_state.rock_lab_df = normalize_lab_tests_df(st.session_state.rock_lab_df)
 st.session_state.tasks_df = normalize_tasks_df(st.session_state.tasks_df)
+st.session_state.task_cost_items_df = normalize_task_cost_items_df(st.session_state.task_cost_items_df)
+st.session_state.ai_task_cost_items_df = normalize_task_cost_items_df(st.session_state.ai_task_cost_items_df)
 
 
 # --------------------------------------------------
@@ -1783,6 +2014,7 @@ with tab3:
         st.session_state.tasks_df.sort_values("Order"),
         num_rows="dynamic",
         use_container_width=True,
+        column_order=["Order", "Task_ID", "Task_Type", "Location_ID", "Investigation_Type", "Depth_m", "Duration_days", "Depends_On", "Bar_Color", "Easting", "Northing", "Access_Notes"],
         column_config={
             "Order": st.column_config.NumberColumn("Order", min_value=1, step=1),
             "Task_ID": st.column_config.TextColumn("Task ID", required=True),
@@ -1792,8 +2024,6 @@ with tab3:
             "Depth_m": st.column_config.NumberColumn("Depth m / Quantity", min_value=0.0),
             "Duration_days": st.column_config.NumberColumn("Duration days", min_value=0.0),
             "Depends_On": st.column_config.SelectboxColumn("Depends On", options=dependency_options),
-            "Assigned_Subcontractor": st.column_config.SelectboxColumn("Assigned Subcontractor", options=subcontractor_options),
-            "Rate_Item": st.column_config.SelectboxColumn("Rate Item", options=rate_item_options, help="Rate item from the subcontractor rate schedule used for rough cost estimate."),
             "Bar_Color": st.column_config.SelectboxColumn("Bar Color", options=COLOR_OPTIONS),
             "Easting": st.column_config.NumberColumn("Easting", min_value=0.0),
             "Northing": st.column_config.NumberColumn("Northing", min_value=0.0),
@@ -1801,6 +2031,66 @@ with tab3:
         },
     )
     st.session_state.tasks_df = normalize_tasks_df(edited_tasks_df)
+
+    st.subheader("Task Cost Build-Up Items")
+    st.caption(
+        "Assign multiple subcontractor rate items to each task. For example, a borehole can include establishment, daily rig rate, drilling per metre, traffic control, service locating and reinstatement."
+    )
+
+    cost_task_options = [""] + st.session_state.tasks_df["Task_ID"].dropna().astype(str).unique().tolist()
+    sub_names = get_subcontractor_options()
+    rate_items = get_rate_item_options()
+
+    col_ci1, col_ci2 = st.columns([1, 1])
+    with col_ci1:
+        if st.button("Add blank cost item row"):
+            new_row = pd.DataFrame([{
+                "Task_ID": cost_task_options[1] if len(cost_task_options) > 1 else "",
+                "Cost_Item_ID": "",
+                "Subcontractor_ID": "",
+                "Subcontractor_Name": "",
+                "Subcontractor_Type": "",
+                "Rate_Item": "",
+                "Unit": "",
+                "Quantity": 0.0,
+                "Rate": 0.0,
+                "Rate_Type": "Unit",
+                "Amount": 0.0,
+                "AI_Selected": False,
+                "User_Confirmed": False,
+                "Notes": "",
+            }])
+            st.session_state.task_cost_items_df = normalize_task_cost_items_df(pd.concat([st.session_state.task_cost_items_df, new_row], ignore_index=True))
+    with col_ci2:
+        if st.button("Recalculate cost item amounts"):
+            st.session_state.task_cost_items_df = calculate_task_cost_items(
+                st.session_state.task_cost_items_df,
+                st.session_state.subcontractor_rates_df,
+                st.session_state.program_df if not st.session_state.program_df.empty else st.session_state.tasks_df,
+            )
+
+    edited_cost_items_df = st.data_editor(
+        calculate_task_cost_items(st.session_state.task_cost_items_df, st.session_state.subcontractor_rates_df, st.session_state.program_df if not st.session_state.program_df.empty else st.session_state.tasks_df),
+        num_rows="dynamic",
+        use_container_width=True,
+        column_config={
+            "Task_ID": st.column_config.SelectboxColumn("Task ID", options=cost_task_options, required=True),
+            "Subcontractor_Name": st.column_config.SelectboxColumn("Subcontractor", options=sub_names),
+            "Rate_Item": st.column_config.SelectboxColumn("Rate Item", options=rate_items),
+            "Quantity": st.column_config.NumberColumn("Quantity", min_value=0.0),
+            "Rate": st.column_config.NumberColumn("Rate", min_value=0.0),
+            "Rate_Type": st.column_config.SelectboxColumn("Rate Type", options=["Daily", "Unit", "Allowance"]),
+            "Amount": st.column_config.NumberColumn("Amount", min_value=0.0, disabled=True),
+            "AI_Selected": st.column_config.CheckboxColumn("AI Selected"),
+            "User_Confirmed": st.column_config.CheckboxColumn("User Confirmed"),
+            "Notes": st.column_config.TextColumn("Notes"),
+        },
+    )
+    st.session_state.task_cost_items_df = calculate_task_cost_items(
+        edited_cost_items_df,
+        st.session_state.subcontractor_rates_df,
+        st.session_state.program_df if not st.session_state.program_df.empty else st.session_state.tasks_df,
+    )
 
 
 # --------------------------------------------------
@@ -1823,6 +2113,7 @@ with tab4:
     with col2:
         if st.button("Clear AI preliminary program"):
             st.session_state.ai_program_df = pd.DataFrame()
+            st.session_state.ai_task_cost_items_df = pd.DataFrame()
             st.session_state.ai_program_comments = ""
 
     st.session_state.project_info["ai_preliminary_model"] = ai_preliminary_model
@@ -1853,6 +2144,12 @@ with tab4:
             with st.spinner("AI is preparing a preliminary program..."):
                 result = generate_ai_preliminary_program(byda_files, ai_preliminary_model, borehole_db_df)
                 st.session_state.ai_program_df = normalize_ai_program_df(pd.DataFrame(result.get("preliminary_program", [])))
+                st.session_state.ai_task_cost_items_df = normalize_task_cost_items_df(pd.DataFrame(result.get("task_cost_items", [])))
+                st.session_state.ai_task_cost_items_df = calculate_task_cost_items(
+                    st.session_state.ai_task_cost_items_df,
+                    st.session_state.subcontractor_rates_df,
+                    st.session_state.ai_program_df,
+                )
                 st.session_state.ai_program_comments = str(result.get("general_comments", ""))
             st.success("AI preliminary program generated. Review and edit the table below before using it.")
         except Exception as e:
@@ -1889,11 +2186,39 @@ with tab4:
         )
         st.session_state.ai_program_df = normalize_ai_program_df(edited_ai_df)
 
+        st.subheader("Editable AI Task Cost Build-Up Items")
+        st.caption("Review AI-selected multiple rate items per task before copying the preliminary program to the main program.")
+        ai_cost_task_options = [""] + st.session_state.ai_program_df["Task_ID"].dropna().astype(str).unique().tolist()
+        edited_ai_cost_items_df = st.data_editor(
+            calculate_task_cost_items(st.session_state.ai_task_cost_items_df, st.session_state.subcontractor_rates_df, st.session_state.ai_program_df),
+            num_rows="dynamic",
+            use_container_width=True,
+            key="ai_cost_items_editor",
+            column_config={
+                "Task_ID": st.column_config.SelectboxColumn("Task ID", options=ai_cost_task_options, required=True),
+                "Subcontractor_Name": st.column_config.SelectboxColumn("Subcontractor", options=get_subcontractor_options()),
+                "Rate_Item": st.column_config.SelectboxColumn("Rate Item", options=get_rate_item_options()),
+                "Quantity": st.column_config.NumberColumn("Quantity", min_value=0.0),
+                "Rate": st.column_config.NumberColumn("Rate", min_value=0.0),
+                "Rate_Type": st.column_config.SelectboxColumn("Rate Type", options=["Daily", "Unit", "Allowance"]),
+                "Amount": st.column_config.NumberColumn("Amount", min_value=0.0, disabled=True),
+                "AI_Selected": st.column_config.CheckboxColumn("AI Selected"),
+                "User_Confirmed": st.column_config.CheckboxColumn("User Confirmed"),
+                "Notes": st.column_config.TextColumn("Notes"),
+            },
+        )
+        st.session_state.ai_task_cost_items_df = calculate_task_cost_items(
+            edited_ai_cost_items_df,
+            st.session_state.subcontractor_rates_df,
+            st.session_state.ai_program_df,
+        )
+
         prelim_cost_df, prelim_summary_df = estimate_program_cost(
             st.session_state.ai_program_df,
             st.session_state.rates_df,
             st.session_state.soil_lab_df,
             st.session_state.rock_lab_df,
+            st.session_state.ai_task_cost_items_df,
         )
         st.subheader("Preliminary Rough Cost Estimate")
         if prelim_cost_df.empty:
@@ -1906,13 +2231,15 @@ with tab4:
 
         if st.button("Use AI Preliminary Program for Gantt Chart"):
             st.session_state.program_df = normalize_ai_program_df(st.session_state.ai_program_df)
+            st.session_state.task_cost_items_df = normalize_task_cost_items_df(st.session_state.ai_task_cost_items_df)
             st.session_state.cost_df, st.session_state.cost_summary_df = estimate_program_cost(
                 st.session_state.program_df,
                 st.session_state.rates_df,
                 st.session_state.soil_lab_df,
                 st.session_state.rock_lab_df,
+                st.session_state.task_cost_items_df,
             )
-            st.success("AI preliminary program copied to the Program & Gantt tab.")
+            st.success("AI preliminary program and cost build-up copied to the Program & Gantt tab.")
 
 
 # --------------------------------------------------
@@ -1938,6 +2265,7 @@ with tab5:
                     st.session_state.rates_df,
                     st.session_state.soil_lab_df,
                     st.session_state.rock_lab_df,
+                    st.session_state.task_cost_items_df,
                 )
                 st.success("Rule-based program generated.")
             except ValueError as e:
@@ -1948,13 +2276,15 @@ with tab5:
                 st.warning("No AI preliminary program is available yet.")
             else:
                 st.session_state.program_df = normalize_ai_program_df(st.session_state.ai_program_df)
+                st.session_state.task_cost_items_df = normalize_task_cost_items_df(st.session_state.ai_task_cost_items_df)
                 st.session_state.cost_df, st.session_state.cost_summary_df = estimate_program_cost(
                     st.session_state.program_df,
                     st.session_state.rates_df,
                     st.session_state.soil_lab_df,
                     st.session_state.rock_lab_df,
+                    st.session_state.task_cost_items_df,
                 )
-                st.success("AI preliminary program loaded.")
+                st.success("AI preliminary program and cost build-up loaded.")
 
     if not st.session_state.program_df.empty:
         st.subheader("Editable Program Table")
@@ -1963,20 +2293,51 @@ with tab5:
             program_for_edit,
             num_rows="dynamic",
             use_container_width=True,
+            column_order=[
+                "Order", "Task_ID", "Task_Type", "Location_ID", "Investigation_Type", "Depth_m", "Duration_days",
+                "Depends_On", "Start", "Finish", "Bar_Color", "Easting", "Northing", "Access_Notes",
+                "Planning_Notes", "Traffic_Management", "Services_Risk", "Groundwater_Risk",
+            ],
             column_config={
                 "Start": st.column_config.DateColumn("Start"),
                 "Finish": st.column_config.DateColumn("Finish"),
-                "Assigned_Subcontractor": st.column_config.SelectboxColumn("Assigned Subcontractor", options=get_subcontractor_options()),
-                "Rate_Item": st.column_config.SelectboxColumn("Rate Item", options=get_rate_item_options()),
                 "Bar_Color": st.column_config.SelectboxColumn("Bar Color", options=COLOR_OPTIONS),
             },
         )
         st.session_state.program_df = normalize_ai_program_df(edited_program_df)
+
+        st.subheader("Editable Program Cost Build-Up Items")
+        st.caption("Each task can have multiple subcontractor rate items. Edit quantities/rates here; amounts recalculate automatically.")
+        program_cost_task_options = [""] + st.session_state.program_df["Task_ID"].dropna().astype(str).unique().tolist()
+        edited_program_cost_items_df = st.data_editor(
+            calculate_task_cost_items(st.session_state.task_cost_items_df, st.session_state.subcontractor_rates_df, st.session_state.program_df),
+            num_rows="dynamic",
+            use_container_width=True,
+            key="program_cost_items_editor",
+            column_config={
+                "Task_ID": st.column_config.SelectboxColumn("Task ID", options=program_cost_task_options, required=True),
+                "Subcontractor_Name": st.column_config.SelectboxColumn("Subcontractor", options=get_subcontractor_options()),
+                "Rate_Item": st.column_config.SelectboxColumn("Rate Item", options=get_rate_item_options()),
+                "Quantity": st.column_config.NumberColumn("Quantity", min_value=0.0),
+                "Rate": st.column_config.NumberColumn("Rate", min_value=0.0),
+                "Rate_Type": st.column_config.SelectboxColumn("Rate Type", options=["Daily", "Unit", "Allowance"]),
+                "Amount": st.column_config.NumberColumn("Amount", min_value=0.0, disabled=True),
+                "AI_Selected": st.column_config.CheckboxColumn("AI Selected"),
+                "User_Confirmed": st.column_config.CheckboxColumn("User Confirmed"),
+                "Notes": st.column_config.TextColumn("Notes"),
+            },
+        )
+        st.session_state.task_cost_items_df = calculate_task_cost_items(
+            edited_program_cost_items_df,
+            st.session_state.subcontractor_rates_df,
+            st.session_state.program_df,
+        )
         st.session_state.cost_df, st.session_state.cost_summary_df = estimate_program_cost(
             st.session_state.program_df,
             st.session_state.rates_df,
             st.session_state.soil_lab_df,
             st.session_state.rock_lab_df,
+            st.session_state.task_cost_items_df,
         )
 
         plot_df = normalize_ai_program_df(st.session_state.program_df)
@@ -2123,7 +2484,9 @@ with tab6:
         "soil_lab_tests": st.session_state.soil_lab_df.to_dict(orient="records"),
         "rock_lab_tests": st.session_state.rock_lab_df.to_dict(orient="records"),
         "tasks": st.session_state.tasks_df.to_dict(orient="records"),
+        "task_cost_items": st.session_state.task_cost_items_df.to_dict(orient="records") if not st.session_state.task_cost_items_df.empty else [],
         "ai_program": st.session_state.ai_program_df.to_dict(orient="records") if not st.session_state.ai_program_df.empty else [],
+        "ai_task_cost_items": st.session_state.ai_task_cost_items_df.to_dict(orient="records") if not st.session_state.ai_task_cost_items_df.empty else [],
         "ai_program_comments": st.session_state.ai_program_comments,
         "program": st.session_state.program_df.to_dict(orient="records") if not st.session_state.program_df.empty else [],
         "cost": st.session_state.cost_df.to_dict(orient="records") if not st.session_state.cost_df.empty else [],
@@ -2148,7 +2511,9 @@ with tab6:
         st.session_state.soil_lab_df = normalize_lab_tests_df(pd.DataFrame(loaded.get("soil_lab_tests", [])))
         st.session_state.rock_lab_df = normalize_lab_tests_df(pd.DataFrame(loaded.get("rock_lab_tests", [])))
         st.session_state.tasks_df = normalize_tasks_df(pd.DataFrame(loaded.get("tasks", [])))
+        st.session_state.task_cost_items_df = normalize_task_cost_items_df(pd.DataFrame(loaded.get("task_cost_items", [])))
         st.session_state.ai_program_df = normalize_ai_program_df(pd.DataFrame(loaded.get("ai_program", [])))
+        st.session_state.ai_task_cost_items_df = normalize_task_cost_items_df(pd.DataFrame(loaded.get("ai_task_cost_items", [])))
         st.session_state.ai_program_comments = loaded.get("ai_program_comments", "")
         st.session_state.program_df = normalize_ai_program_df(pd.DataFrame(loaded.get("program", [])))
         st.session_state.cost_df = pd.DataFrame(loaded.get("cost", []))
@@ -2162,7 +2527,9 @@ with tab6:
         "Soil Lab Tests": st.session_state.soil_lab_df,
         "Rock Lab Tests": st.session_state.rock_lab_df,
         "Tasks": st.session_state.tasks_df,
+        "Task Cost Items": st.session_state.task_cost_items_df,
         "AI Preliminary Program": st.session_state.ai_program_df,
+        "AI Task Cost Items": st.session_state.ai_task_cost_items_df,
         "Program": st.session_state.program_df,
         "Cost": st.session_state.cost_df,
         "Cost Summary": st.session_state.cost_summary_df,
